@@ -13,11 +13,11 @@
 #define udir_pin 7 //пин для управления направлением вращения. канал M1 на шилде
 #define uservo_pin 9 //пин куда подключен сервомотор
 
-#define head_light_pin A0 //передние фары
+#define head_light_pin A4 //передние фары
 #define left_indicator_pin A3 //левый поворотник
 #define right_indicator_pin A2 //правый поворотник
 #define stop_indicator_pin A1 //стоп сигналы
-#define rear_light_pin A4 // задние фары
+#define rear_light_pin A0 // задние фары
 
 #define turn_signal_freq 500 //частота моргания поворотников в миллисекундах
 #define deviation 10 //значение угла поворота сервомотора в градусах при котором будут включены поворотники
