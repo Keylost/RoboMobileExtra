@@ -29,7 +29,6 @@ int light3 = 0;
 signed char buffer[20]; 
 unsigned long time;
 Servo servo_pin_9;
-int _ABVAR_16_0 = 0 ;
 
 void detection();
 void traffic3();
@@ -168,13 +167,13 @@ void loop()
     }
     servo_pin_9.write( _ABVAR_15_servo );
     _ABVAR_10_oldAngle = _ABVAR_9_angle ;
-    if (( !( _ABVAR_1_stopLineIsHere ) && ( !( _ABVAR_2_stopSignIsHere ) && !( _ABVAR_4_crossroadIsHere ) ) ))
-    {
-      _ABVAR_3_speed = ( 175 - ( abs( _ABVAR_9_angle ) * 0.4 ) ) ;
-    }
     if (( ( ( _ABVAR_1_stopLineIsHere || _ABVAR_2_stopSignIsHere ) || ( _ABVAR_4_crossroadIsHere || stop_line ) ) || ( stop_sign || zebra ) ))
     {
       detection();
+    }
+    if (( !( _ABVAR_1_stopLineIsHere ) && ( !( _ABVAR_2_stopSignIsHere ) && !( _ABVAR_4_crossroadIsHere ) ) ))
+    {
+      _ABVAR_3_speed = ( 175 - ( abs( _ABVAR_9_angle ) * 0.4 ) ) ;
     }
     leds();
     traffic2();
@@ -182,8 +181,75 @@ void loop()
   }
   else
   {
-    analogWrite(6 , _ABVAR_16_0);
+    analogWrite(6 , 0);
     digitalWrite(A1 , HIGH);
+  }
+}
+
+void crossroad_detection()
+{
+  if (( ( ( ( _ABVAR_11_time - _ABVAR_13_crossMoment ) ) >= ( 15 ) ) && ( ( _ABVAR_3_speed ) >= ( 105 ) ) ))
+  {
+    _ABVAR_3_speed = ( _ABVAR_3_speed - 1 ) ;
+    _ABVAR_13_crossMoment = _ABVAR_11_time ;
+  }
+  if (( !( zebra ) && ( ( _ABVAR_3_speed ) != ( 100 ) ) ))
+  {
+    _ABVAR_3_speed = 100 ;
+    _ABVAR_13_crossMoment = _ABVAR_11_time ;
+  }
+  if (( ( ( _ABVAR_11_time - _ABVAR_13_crossMoment ) ) >= ( 3000 ) ))
+  {
+    _ABVAR_3_speed = ( 175 - ( abs( _ABVAR_9_angle ) * 0.4 ) ) ;
+    _ABVAR_4_crossroadIsHere = false ;
+  }
+}
+
+void leds()
+{
+  if (( ( _ABVAR_9_angle ) > ( 30 ) ))
+  {
+    if (( ( ( _ABVAR_11_time - _ABVAR_14_ledsMoment ) ) >= ( 500 ) ))
+    {
+      _ABVAR_14_ledsMoment = _ABVAR_11_time ;
+      if (_ABVAR_6_right_light)
+      {
+        _ABVAR_6_right_light = false ;
+        digitalWrite(A3 , HIGH);
+      }
+      else
+      {
+        _ABVAR_6_right_light = true ;
+        digitalWrite(A3 , LOW);
+      }
+    }
+  }
+  else
+  {
+    digitalWrite(A3 , LOW);
+    _ABVAR_6_right_light = true ;
+  }
+  if (( ( _ABVAR_9_angle ) < ( -30 ) ))
+  {
+    if (( ( ( _ABVAR_11_time - _ABVAR_14_ledsMoment ) ) >= ( 500 ) ))
+    {
+      _ABVAR_14_ledsMoment = _ABVAR_11_time ;
+      if (_ABVAR_7_left_light)
+      {
+        _ABVAR_7_left_light = false ;
+        digitalWrite(A2 , HIGH);
+      }
+      else
+      {
+        _ABVAR_7_left_light = true ;
+        digitalWrite(A2 , LOW);
+      }
+    }
+  }
+  else
+  {
+    digitalWrite(A2 , LOW);
+    _ABVAR_7_left_light = true ;
   }
   if (( ( _ABVAR_3_speed ) == ( 0 ) ))
   {
@@ -192,6 +258,27 @@ void loop()
   else
   {
     digitalWrite(A1 , LOW);
+  }
+}
+
+void traffic3()
+{
+  if (( ( light3 ) == ( 7 ) ))
+  {
+    _ABVAR_1_stopLineIsHere = false ;
+  }
+  if (( ( _ABVAR_1_stopLineIsHere && !( stop_line ) ) && ( ( ( light3 ) == ( 8 ) ) || ( ( light3 ) == ( 9 ) ) ) ))
+  {
+    _ABVAR_3_speed = 0 ;
+    _ABVAR_4_crossroadIsHere = false ;
+  }
+}
+
+void traffic2()
+{
+  if (( ( light2 ) == ( 9 ) ))
+  {
+    _ABVAR_3_speed = 0 ;
   }
 }
 
@@ -249,94 +336,6 @@ void detection()
     {
       traffic3();
     }
-  }
-}
-
-void leds()
-{
-  if (( ( _ABVAR_9_angle ) > ( 30 ) ))
-  {
-    if (( ( ( _ABVAR_11_time - _ABVAR_14_ledsMoment ) ) >= ( 500 ) ))
-    {
-      _ABVAR_14_ledsMoment = _ABVAR_11_time ;
-      if (_ABVAR_6_right_light)
-      {
-        _ABVAR_6_right_light = false ;
-        digitalWrite(A3 , HIGH);
-      }
-      else
-      {
-        _ABVAR_6_right_light = true ;
-        digitalWrite(A3 , LOW);
-      }
-    }
-  }
-  else
-  {
-    digitalWrite(A3 , LOW);
-    _ABVAR_6_right_light = true ;
-  }
-  if (( ( _ABVAR_9_angle ) < ( -30 ) ))
-  {
-    if (( ( ( _ABVAR_11_time - _ABVAR_14_ledsMoment ) ) >= ( 500 ) ))
-    {
-      _ABVAR_14_ledsMoment = _ABVAR_11_time ;
-      if (_ABVAR_7_left_light)
-      {
-        _ABVAR_7_left_light = false ;
-        digitalWrite(A2 , HIGH);
-      }
-      else
-      {
-        _ABVAR_7_left_light = true ;
-        digitalWrite(A2 , LOW);
-      }
-    }
-  }
-  else
-  {
-    digitalWrite(A2 , LOW);
-    _ABVAR_7_left_light = true ;
-  }
-}
-
-void crossroad_detection()
-{
-  if (( ( ( ( _ABVAR_11_time - _ABVAR_13_crossMoment ) ) >= ( 15 ) ) && ( ( _ABVAR_3_speed ) >= ( 105 ) ) ))
-  {
-    _ABVAR_3_speed = ( _ABVAR_3_speed - 1 ) ;
-    _ABVAR_13_crossMoment = _ABVAR_11_time ;
-  }
-  if (( !( zebra ) && ( ( _ABVAR_3_speed ) != ( 100 ) ) ))
-  {
-    _ABVAR_3_speed = 100 ;
-    _ABVAR_13_crossMoment = _ABVAR_11_time ;
-  }
-  if (( ( ( _ABVAR_11_time - _ABVAR_13_crossMoment ) ) >= ( 3000 ) ))
-  {
-    _ABVAR_3_speed = ( 175 - ( abs( _ABVAR_9_angle ) * 0.4 ) ) ;
-    _ABVAR_4_crossroadIsHere = false ;
-  }
-}
-
-void traffic3()
-{
-  if (( ( light3 ) == ( 7 ) ))
-  {
-    _ABVAR_1_stopLineIsHere = false ;
-  }
-  if (( ( _ABVAR_1_stopLineIsHere && !( stop_line ) ) && ( ( ( light3 ) == ( 8 ) ) || ( ( light3 ) == ( 9 ) ) ) ))
-  {
-    _ABVAR_3_speed = 0 ;
-    _ABVAR_4_crossroadIsHere = false ; 
-  }
-}
-
-void traffic2()
-{
-  if (( ( light2 ) == ( 9 ) ))
-  {
-    _ABVAR_3_speed = 0 ;
   }
 }
 
