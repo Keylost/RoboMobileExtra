@@ -20,7 +20,7 @@
 #define rear_light_pin A0 // задние фары
 
 #define turn_signal_freq 500 //частота моргания поворотников в миллисекундах
-#define deviation 10 //значение угла поворота сервомотора в градусах при котором будут включены поворотники
+#define deviation 14 //значение угла поворота сервомотора в градусах при котором будут включены поворотники
 #define angle_range 35
 #define angle_center 90
 #define speed_min 450
@@ -146,15 +146,7 @@ void loop(void)
   
   if(Speed == 0)
   {
-    if(abs(Corner-90)>angle_range-5)
-    {
-      Speed = old_Speed;
-      motor1.set_speed(Speed/4);
-    }
-    else
-    {
       digitalWrite(upwm_pin, LOW);
-    }
   }
   else
   {
