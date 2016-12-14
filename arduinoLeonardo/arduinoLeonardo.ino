@@ -67,12 +67,12 @@ class Motor
    {
     case FORWARD:
      {
-        digitalWrite(DIR_PIN, HIGH);
+        digitalWrite(DIR_PIN, LOW);
         break;
      }
     case BACKWARD:
      {
-        digitalWrite(DIR_PIN, LOW);
+        digitalWrite(DIR_PIN, HIGH);
         break;        
      }
     default:
