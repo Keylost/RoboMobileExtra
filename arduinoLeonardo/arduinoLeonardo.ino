@@ -6,7 +6,7 @@
 //так как они с прерываниями, второй - любой
 //второй пин можно не использовать так как мы знаем направление движения
 //и важно определять только скорость
-#define encoder0PinA  2
+#define encoder0PinA  3
 //#define encoder0PinB  5
 
 #define upwm_pin 6 //пин для управления скоростью мотора. канал M1 на шилде
@@ -124,15 +124,22 @@ void setup(void)
   turn_left_light = false;
   
   //set up encoder start
-  pinMode(encoder0PinA, INPUT); 
-  attachInterrupt(1, doEncoder, CHANGE); // encoder pin on interrupt 0 - pin 2 
+  pinMode(encoder0PinA, INPUT_PULLUP); 
+  attachInterrupt(1, doEncoder, FALLING); // encoder pin on interrupt 0 - pin 2 
   //set up encoder end
 
   delay(100); //wait for system initialization
 }
 
 void turnsignal_illumination();
-void serial_get_data();
+void update_speed();
+
+float error = 0;
+#define kp = 0.5;
+#define ki = 0.1;
+float integral = 0;
+int regulator = 0;
+int regulatorOld = 0;
 
 void loop(void)
 {
@@ -143,24 +150,30 @@ void loop(void)
   {
      Speed = 0;   
   }
-  
   if(Speed == 0)
   {
-      digitalWrite(upwm_pin, LOW);
-  }
-  else
-  {
-    motor1.set_speed(Speed/4);
+     digitalWrite(upwm_pin, LOW);
   }
   
   turnsignal_illumination(); //управляет мерцанием поворотников
 
-  old_Speed = Speed; 
+  //old_Speed = Speed; 
   old_Corner = Corner;
   serial_get_data(); //получить данные по последовательному порту
-  if(time_current-last_speed_update>1000)
+  if(time_current-last_speed_update>300)
   {
-    serial_send_data();
+    update_speed();
+    if(Speed!=0)
+    {
+      regulatorOld = regulator;
+      error = Speed - real_speed;
+      integral += error*0.3;
+      if(integral>200) integral = 200;
+      regulator = (int)(error*2.5 + integral);
+      regulator = regulator>255 ? 255 : (regulator<0 ? 0 : regulator); 
+      regulator = (regulator + regulatorOld)*0.5;
+      motor1.set_speed(regulator);
+    }
   }
 }
 
@@ -173,17 +186,17 @@ void loop(void)
 
 
 
-void serial_send_data()
+void update_speed()
 {
   //отправить последовательность байт по COM порту
   //отправить реальную скорость
   //unsigned int - 2 байта
-  real_speed = encoder0Pos*1.3;
+  real_speed = encoder0Pos*1.3/0.3; //0.3 coz of 300ms update
   encoder0Pos=0;
   last_speed_update = millis();
    Serial1.print('F');
    Serial1.print(real_speed);
-   Serial1.print('E');
+   Serial1.print("E\n");
 }
 
 

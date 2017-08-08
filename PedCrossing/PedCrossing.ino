@@ -9,7 +9,7 @@ boolean script_dir = 0;
 #define step_1 100
 #define step_2 560
 #define time_wait_script random(1000,30000)
-#define speed_men 100
+#define speed_men 180
 
 #define impuls_per_mm 5.1
 void setup() {
