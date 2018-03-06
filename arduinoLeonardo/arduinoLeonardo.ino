@@ -1,5 +1,8 @@
 #include <Servo.h>
 
+#define FWD_BWD_REVERSE //раскоментируйете или закоментируйте эту строчку, если робот едет назад, когда ожидается вперед
+#define POLOLU_MAGNETIC_ENCODER
+//#define POLOLU_OPTICAL_ENCODER
 //#define orange_car
 //пины для энкодера
 //(!!! ардуино уно один из пинов обязательно на второй или третий пин
@@ -67,12 +70,20 @@ class Motor
    {
     case FORWARD:
      {
+        #if !defined(FWD_BWD_REVERSE)
         digitalWrite(DIR_PIN, LOW);
+        #else
+        digitalWrite(DIR_PIN, HIGH);
+        #endif
         break;
      }
     case BACKWARD:
      {
+        #if !defined(FWD_BWD_REVERSE)
         digitalWrite(DIR_PIN, HIGH);
+        #else
+        digitalWrite(DIR_PIN, LOW);
+        #endif
         break;        
      }
     default:
@@ -191,7 +202,11 @@ void update_speed()
   //отправить последовательность байт по COM порту
   //отправить реальную скорость
   //unsigned int - 2 байта
+  #if defined(POLOLU_OPTICAL_ENCODER)
   real_speed = encoder0Pos*1.3/0.3; //0.3 coz of 300ms update
+  #else if defined(POLOLU_MAGNETIC_ENCODER)
+  real_speed = encoder0Pos*1.3/0.3; //0.3 coz of 300ms update
+  #endif
   encoder0Pos=0;
   last_speed_update = millis();
    Serial1.print('F');
