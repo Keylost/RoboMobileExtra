@@ -1,6 +1,6 @@
 #include <Servo.h>
 
-#define FWD_BWD_REVERSE //раскоментируйете или закоментируйте эту строчку, если робот едет назад, когда ожидается вперед
+//#define FWD_BWD_REVERSE //раскоментируйете или закоментируйте эту строчку, если робот едет назад, когда ожидается вперед
 #define POLOLU_MAGNETIC_ENCODER
 //#define POLOLU_OPTICAL_ENCODER
 //#define orange_car
@@ -10,7 +10,7 @@
 //второй пин можно не использовать так как мы знаем направление движения
 //и важно определять только скорость
 #define encoder0PinA  3
-//#define encoder0PinB  5
+#define encoder0PinB  2
 
 #define upwm_pin 6 //пин для управления скоростью мотора. канал M1 на шилде
 #define udir_pin 7 //пин для управления направлением вращения. канал M1 на шилде
@@ -135,8 +135,11 @@ void setup(void)
   turn_left_light = false;
   
   //set up encoder start
-  pinMode(encoder0PinA, INPUT_PULLUP); 
+  //pinMode(encoder0PinA, INPUT_PULLUP); 
+  pinMode(encoder0PinA, INPUT);
+  pinMode(encoder0PinB, INPUT);
   attachInterrupt(1, doEncoder, FALLING); // encoder pin on interrupt 0 - pin 2 
+  attachInterrupt(0, doEncoder, FALLING);
   //set up encoder end
 
   delay(100); //wait for system initialization
@@ -202,10 +205,13 @@ void update_speed()
   //отправить последовательность байт по COM порту
   //отправить реальную скорость
   //unsigned int - 2 байта
+  //l=226.188 mm
+  //imp = 12 counts per revolution with magnetic encoder
+  //
   #if defined(POLOLU_OPTICAL_ENCODER)
   real_speed = encoder0Pos*1.3/0.3; //0.3 coz of 300ms update
   #else if defined(POLOLU_MAGNETIC_ENCODER)
-  real_speed = encoder0Pos*1.3/0.3; //0.3 coz of 300ms update
+  real_speed = encoder0Pos*(22.62/12.0)/0.3; //0.3 coz of 300ms update
   #endif
   encoder0Pos=0;
   last_speed_update = millis();
