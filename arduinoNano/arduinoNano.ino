@@ -3,7 +3,8 @@
 //#define FWD_BWD_REVERSE //раскоментируйете или закоментируйте эту строчку, если робот едет назад, когда ожидается вперед
 #define POLOLU_MAGNETIC_ENCODER
 //#define POLOLU_OPTICAL_ENCODER
-//#define orange_car
+#define BATTARY_TEST //если раскоментировано, то один раз, то будет Ардуино будет включать буззер при разряде штатных LiPo батарей
+//#define BARRIER_TEST //если раскоментировано, то будет включаться буззер и выключаться двигатель, если машинка долго не может сдвинуться с места
 //пины для энкодера
 //(!!! ардуино уно один из пинов обязательно на второй или третий пин
 //так как они с прерываниями, второй - любой
@@ -12,8 +13,19 @@
 #define encoder0PinA  3
 #define encoder0PinB  2
 
-#define upwm_pin 5 //пин для управления скоростью мотора. канал M1 на шилде
-#define udir_pin 6 //пин для управления направлением вращения. канал M1 на шилде
+#if defined(BATTARY_TEST)
+#define BATTARY1_PIN A5
+#define BATTARY2_PIN A6
+
+#define voltageFilterL 0.3
+#define BATTARY1_RK 5.09*2
+#define BATTARY2_RK 5.09*2
+#endif
+
+#define BUZZER_PIN 13
+
+#define upwm_pin 6 //пин для управления скоростью мотора. канал M1 на шилде
+#define udir_pin 5 //пин для управления направлением вращения. канал M1 на шилде
 #define uservo_pin 9 //пин куда подключен сервомотор
 
 #define head_light_pin A4 //передние фары
@@ -44,6 +56,23 @@ unsigned long last_speed_update =0;
 boolean turn_right_light;
 boolean turn_left_light;
 volatile unsigned int encoder0Pos = 0;
+
+#if defined(BATTARY_TEST)
+float BATTARY1_U = 7.4;
+float BATTARY2_U = 7.4;
+float bt1_tmp = 0;
+float bt2_tmp = 0;
+unsigned long last_battary_test = 0;
+void battary_test_fnc();
+#endif
+
+#ifdef BARRIER_TEST
+boolean barrier_flag = false;
+unsigned long barrier_tm_ind = 0;
+boolean barrier_beep_flag = false;
+unsigned long barrier_beep_time = 0;
+boolean barrier_stop_flag = false;
+#endif
 
 enum directions
 {
@@ -88,14 +117,18 @@ class Motor
  }
 };
 
-Motor motor1(upwm_pin,udir_pin);
+Motor motor1(udir_pin,upwm_pin);
 
 void setup(void)
 {  
   Serial.begin(115200);
   Serial.setTimeout(20);
-  myservo.attach(uservo_pin);  
+  myservo.attach(uservo_pin);
+  //#ifndef FWD_BWD_REVERSE
   motor1.set_direction(FORWARD);
+  //#else
+  //motor1.set_direction(BACKWARD);
+  //#endif
   pinMode(rear_light_pin,OUTPUT);
   pinMode(head_light_pin,OUTPUT);
   pinMode(stop_indicator_pin,OUTPUT);
@@ -112,6 +145,16 @@ void setup(void)
   time_current = 0;
   turn_right_light = false;
   turn_left_light = false;
+
+  #if defined(BATTARY_TEST)
+  pinMode(BATTARY1_PIN, INPUT);
+  pinMode(BATTARY2_PIN, INPUT);
+  pinMode(BUZZER_PIN, OUTPUT);
+  digitalWrite(BUZZER_PIN, LOW); //буззер
+
+  BATTARY1_U = (analogRead(A5)*BATTARY1_RK)/1024.0;
+  BATTARY2_U = (analogRead(A6)*BATTARY2_RK)/1024.0;
+  #endif
   
   //set up encoder start
   //pinMode(encoder0PinA, INPUT_PULLUP); 
@@ -121,7 +164,14 @@ void setup(void)
   attachInterrupt(0, doEncoder, FALLING);
   //set up encoder end
 
-  delay(100); //wait for system initialization
+  //system initialization (wait + signal) 
+  digitalWrite(BUZZER_PIN, HIGH);
+  delay(100); 
+  digitalWrite(BUZZER_PIN, LOW);
+  delay(150);
+  digitalWrite(BUZZER_PIN, HIGH);
+  delay(100);
+  digitalWrite(BUZZER_PIN, LOW);
 }
 
 void turnsignal_illumination();
@@ -136,9 +186,79 @@ int regulatorOld = 0;
 
 void loop(void)
 {
+  #if defined(BATTARY_TEST)
+  if(millis() - last_battary_test>1000)
+  {
+    battary_test_fnc();
+    last_battary_test = millis();
+  }
+  #endif
   time_current = millis();
-  
+
+  #if defined(BARRIER_TEST)
+  if(BATTARY1_U>5.1 && real_speed == 0 && Speed>0)
+  {
+    digitalWrite(BUZZER_PIN, HIGH);
+    if(!barrier_flag)
+    {
+      barrier_flag = true;
+      barrier_tm_ind = time_current;
+    }
+    else
+    {
+      if(time_current - barrier_tm_ind > 5000 && time_current - barrier_tm_ind < 14000)
+      {
+        motor1.set_speed(0);
+        barrier_stop_flag = true;
+        //if(!barrier_beep_flag)
+        {
+          if(barrier_beep_time==0)
+          {
+            barrier_beep_flag = true;
+            digitalWrite(BUZZER_PIN, HIGH);
+            digitalWrite(rear_light_pin, HIGH);
+            digitalWrite(head_light_pin, HIGH);
+            barrier_beep_time = time_current;
+          }
+          else if(time_current - barrier_beep_time > 1000)
+          {
+            barrier_beep_flag = false;
+            barrier_beep_time = 0;
+            digitalWrite(BUZZER_PIN, LOW);
+            digitalWrite(rear_light_pin, LOW);
+            digitalWrite(head_light_pin, LOW);
+          }
+        }
+      }
+      else if(time_current - barrier_tm_ind > 14000)
+      {
+        barrier_tm_ind = 0;
+        barrier_stop_flag = false;
+        digitalWrite(BUZZER_PIN, LOW);
+        digitalWrite(rear_light_pin, LOW);
+        digitalWrite(head_light_pin, LOW);
+      }
+    }
+  }
+  else
+  {
+    if(barrier_flag)
+    {
+      barrier_stop_flag = false;
+      barrier_flag = false;
+      digitalWrite(BUZZER_PIN, LOW);
+      digitalWrite(rear_light_pin, HIGH);
+      digitalWrite(head_light_pin, HIGH);
+    }
+  }
+  #endif
+
+  #if defined(BATTARY_TEST)
+  if(Corner!=old_Corner && BATTARY1_U>5.1) myservo.write(Corner);  //set up corner
+  #else
   if(Corner!=old_Corner) myservo.write(Corner);  //set up corner
+  #endif
+  
   if((time_current-time)>1000)
   {
      Speed = 0;   
@@ -156,6 +276,12 @@ void loop(void)
   if(time_current-last_speed_update>300)
   {
     update_speed();
+    #ifdef BARRIER_TEST
+    if(!barrier_stop_flag)
+    {
+      Speed=0;
+    }
+    #endif
     if(Speed!=0)
     {
       regulatorOld = regulator;
@@ -197,6 +323,10 @@ void update_speed()
    Serial.print('F');
    Serial.print(real_speed);
    Serial.print("E\n");
+    //Serial.print("bt1: ");
+    //Serial.println(BATTARY1_U);
+    //Serial.print("bt1: ");
+    //Serial.println(BATTARY2_U);
 }
 
 
@@ -245,7 +375,7 @@ void turnsignal_illumination()
     digitalWrite(stop_indicator_pin, LOW);
   }
   
-  if(Corner>90+deviation)
+  if(Corner<90-deviation)
   {
     if(!turn_right_light)
     {
@@ -278,7 +408,7 @@ void turnsignal_illumination()
     digitalWrite(right_indicator_pin, LOW);
   }
   
-  if(Corner<90-deviation)
+  if(Corner>90+deviation)
   {
     if(!turn_left_light)
     {
@@ -317,3 +447,32 @@ void doEncoder()
 {
   encoder0Pos++;
 }
+
+#if defined(BATTARY_TEST)
+void battary_test_fnc()
+{
+  bt1_tmp = (analogRead(A5)*BATTARY1_RK)/1024.0;
+  bt2_tmp = (analogRead(A6)*BATTARY2_RK)/1024.0;
+  BATTARY1_U = BATTARY1_U - voltageFilterL * (BATTARY1_U - bt1_tmp);
+  BATTARY2_U = BATTARY2_U - voltageFilterL * (BATTARY2_U - bt2_tmp);
+  while((BATTARY1_U>5.15 && BATTARY1_U < 6.9) || (BATTARY2_U>5.15 && BATTARY2_U < 6.9))
+  {
+    digitalWrite(13, HIGH);
+    motor1.set_speed(0);
+    digitalWrite(rear_light_pin, LOW);
+    digitalWrite(head_light_pin, LOW);
+    digitalWrite(left_indicator_pin,LOW);
+    digitalWrite(right_indicator_pin,LOW);
+    digitalWrite(stop_indicator_pin,LOW);
+    delay(1000);
+    bt1_tmp = (analogRead(A5)*BATTARY1_RK)/1024.0;
+    bt2_tmp = (analogRead(A6)*BATTARY2_RK)/1024.0;
+    BATTARY1_U = BATTARY1_U - voltageFilterL * (BATTARY1_U - bt1_tmp);
+    BATTARY2_U = BATTARY2_U - voltageFilterL * (BATTARY2_U - bt2_tmp);
+  }
+  digitalWrite(13, LOW);
+  digitalWrite(rear_light_pin, HIGH);
+  digitalWrite(head_light_pin, HIGH);
+  return;
+}
+#endif
