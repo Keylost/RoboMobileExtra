@@ -43,7 +43,7 @@
 int Speed = 0,old_Speed=0; // Скорость в условных единицах
 long mvolts = 0; //входное напряжение
 float real_speed = 0; //реальная скорость в сантиметрах в секунду
-int DIR = 0;
+int DIR = 1, old_DIR = 1;
 int Corner = 90,old_Corner = 0; // угол поворота в градусах
 Servo myservo;
 char cur_state = 0;
@@ -258,6 +258,13 @@ void loop(void)
   #else
   if(Corner!=old_Corner) myservo.write(Corner);  //set up corner
   #endif
+  
+  if(DIR != old_DIR)
+  {
+	  motor1.set_speed(0);
+	  motor1.set_direction((directions)DIR);
+	  old_DIR = DIR;
+  }
   
   if((time_current-time)>1000)
   {
